@@ -19,6 +19,7 @@ import os
 import random
 import pickle
 import bpy
+import subprocess
 
 abs_path = os.path.abspath(__file__)
 sys.path.append(os.path.dirname(abs_path))
@@ -53,7 +54,18 @@ def scene_setting_init(use_gpu):
     bpy.data.scenes[sce].render.resolution_x = g_resolution_x
     bpy.data.scenes[sce].render.resolution_y = g_resolution_y
     bpy.data.scenes[sce].render.resolution_percentage = g_resolution_percentage
-
+    
+    #point light
+    light_data = bpy.data.lamps.new(name="PointLight", type='POINT')
+    light_object = bpy.data.objects.new(name="PointLight", object_data=light_data)
+    bpy.data.scenes[sce].objects.link(light_object)
+    light_object.location = (random.randrange(100), random.randrange(100), random.randrange(100))
+    light_data.energy = random.randrange(100)
+    light_data.shadow_soft_size = random.uniform(0, 2)
+    light_data.use_shadow = True
+    bpy.data.scenes[sce].objects.active = light_object
+    light_object.select = True
+        
     if use_gpu:
         bpy.data.scenes[sce].render.engine = 'CYCLES' #only cycles engine can use gpu
         bpy.data.scenes[sce].render.tile_x = g_hilbert_spiral
@@ -124,13 +136,15 @@ def render(obj_path, viewpoint):
     image_node = bpy.context.scene.node_tree.nodes[0]
     image_node.image = bpy.data.images.load(image_path)
     file_output_node = bpy.context.scene.node_tree.nodes[4]
-    file_output_node.file_slots[0].path = 'blender-######.color.png' # blender placeholder #
+    out_path = 'blender_az{azim}_el{elev}_ti{tilt}_di{dist}-######.color.png'.format(azim=vp.azimuth, elev=vp.elevation, dist=vp.distance, tilt=vp.tilt) # blender placeholder #
+    file_output_node.file_slots[0].path = out_path
 
     #start rendering
     bpy.ops.render.render(write_still=True)
 
     current_frame = bpy.context.scene.frame_current
     bpy.context.scene.frame_set(current_frame + 1)
+    return out_path
 
 def render_obj_by_vp_lists(obj_path, viewpoints):
     """ render one obj file by a given viewpoint list
@@ -151,6 +165,8 @@ def render_obj_by_vp_lists(obj_path, viewpoints):
     
     for vp in vp_lists:
         render(obj_path, vp)
+            
+        
 
 def render_objs_by_one_vp(obj_pathes, viewpoint):
     """ render multiple obj files by a given viewpoint
@@ -241,10 +257,15 @@ for obj_name, models in zip(g_render_objs, result_list):
     if not os.path.exists(obj_folder):
         os.makedirs(obj_folder)
     
-    for model in models:
+    for idx, model in enumerate(models):
         clear_mesh()
         bpy.ops.import_scene.obj(filepath=model.path)
         #combine_objects()
         #scale_objects(0.5)
         set_image_path(obj_folder)
         render_obj_by_vp_lists(model.path, model.vps)
+        if (idx % 100) == 0:
+            print("Sync...")
+            subprocess.run(["s5cmd", "sync", "syn_rgb", "s3://mobileye-team-angie/users/sagiah/shape/rendered/"])
+            subprocess.run(["s5cmd", "rm", "syn_rgb/*"])
+            print("Done sync.")

@@ -171,13 +171,14 @@ def random_sample_objs(num_per_cat):
     for cat, pathes in zip(g_render_objs, obj_path_lists):
         pathes = list(pathes)
         random.shuffle(pathes)
-        samples = random.sample(pathes, num_per_cat)
-        obj_path_dict[cat] = samples
+        if num_per_cat < len(pathes):
+            pathes = random.sample(pathes, num_per_cat)
+        obj_path_dict[cat] = pathes
     
     return obj_path_dict
-    
+
 def random_sample_vps(obj_path_dict, num_per_model):
-    """randomly sample vps from vp lists, for each model,
+    """randomly sample vps, for each model,
     we sample num_per_cat number vps, and save the result to
     g_vps
     Args:
@@ -190,22 +191,20 @@ def random_sample_vps(obj_path_dict, num_per_model):
              viewpoints
     """
 
-    vp_file_lists = [g_view_point_file[name] for name in g_render_objs]
-    viewpoint_lists = load_viewpoints(vp_file_lists)
-
     obj_file_pathes = [obj_path_dict[name] for name in g_render_objs]
 
     result_dict = {}
-    for cat, pathes, vps in zip(g_render_objs, obj_file_pathes, viewpoint_lists):
-        vps = list(vps)
-        random.shuffle(vps)
+    for cat, pathes in zip(g_render_objs, obj_file_pathes):
         models = []
         for p in pathes: 
-            samples = random.sample(vps, num_per_model)
+            samples = [VP(azimuth=random.randrange(360),
+                         elevation=random.randrange(-10, 90),
+                         tilt=random.gauss(mu=0, sigma=5),
+                         distance=random.uniform(1, 1.5)) for _ in range(num_per_model)]
             models.append(Model(p, samples))
             
         result_dict[cat] = models
-    return result_dict 
+    return result_dict
 
 def random_sample_objs_and_vps(model_num_per_cat, vp_num_per_model):
     """wrapper function for randomly sample model and viewpoints

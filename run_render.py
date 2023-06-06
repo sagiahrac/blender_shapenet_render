@@ -8,6 +8,7 @@ author baiyu
 import os
 import subprocess
 import pickle
+from time import sleep
 
 from render_helper import *
 from settings import *
@@ -24,7 +25,48 @@ if __name__ == '__main__':
     #2 models per category
     #3 vps for each model(each vp will be used for only once)
     print("sampling data.....")
-    result_dict = random_sample_objs_and_vps(10, 3)
+    category = os.environ['SHAPENET_CATEGORY']
+    # category = ['skateboard',
+    #             'bottle',
+    #             'tower',
+    #             'bookshelf',
+    #             'camera',
+    #             'laptop',
+    #             'basket',
+    #             'knife',
+    #             'can',
+    #             'train',
+    #             'pillow',
+    #             'trash bin',
+    #             'mailbox',
+    #             'motorbike',
+    #             'dishwasher',
+    #             'pistol',
+    #             'rocket',
+    #             'file cabinet',
+    #             'bag',
+    #             'bed',
+    #             'birdhouse',
+    #             'piano',
+    #             'earphone',
+    #             'stove',
+    #             'microphone',
+    #             'mug',
+    #             'remote',
+    #             'bowl',
+    #             'keyboard',
+    #             'washer',
+    #             'printer',
+    #             'cap',
+    #             'helmet',
+    #             'microwaves']
+    category_id = g_shapenet_categlory_pair[category]
+    max_num_models = max_num_instances[category_id]
+    print('Using {} models.'.format(max_num_models))
+    print('Rendering {} images for each model.'.format(max(14000//max_num_models, 1)))
+    sleep(3)
+    
+    result_dict = random_sample_objs_and_vps(500, 3)
     if not os.path.exists(g_temp):
         os.mkdir(g_temp)
 
@@ -36,12 +78,13 @@ if __name__ == '__main__':
     #render rgb
     command = [g_blender_excutable_path, '--background', '--python', 'render_rgb.py']
     subprocess.run(command)
+    
 
-    #render depth
-    command = [g_blender_excutable_path, '--background', '--python', 'render_depth.py']
-    subprocess.run(command)
+    # #render depth
+    # command = [g_blender_excutable_path, '--background', '--python', 'render_depth.py']
+    # subprocess.run(command)
 
-    #write pose
-    command = [g_blender_excutable_path, '--background', '--python', 'render_pose.py']
-    subprocess.run(command)
+    # #write pose
+    # command = [g_blender_excutable_path, '--background', '--python', 'render_pose.py']
+    # subprocess.run(command)
 
